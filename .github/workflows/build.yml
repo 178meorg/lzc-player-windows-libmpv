@@ -1,0 +1,35 @@
+name: Build FFmpeg
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ffmpeg:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            curl
+            git
+            make
+            pkgconf
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-yasm
+
+      - name: Build FFmpeg
+        run: |
+          ./scripts/build-ffmpeg.sh
