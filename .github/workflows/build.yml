@@ -1,4 +1,4 @@
-name: Build FFmpeg
+name: Build Windows Dependencies
 
 on:
   workflow_dispatch:
@@ -33,3 +33,23 @@ jobs:
       - name: Build FFmpeg
         run: |
           ./scripts/build-ffmpeg.sh
+      
+      - name: Build FreeType
+        shell: msys2 {0}
+        run: |
+          ./scripts/build-freetype.sh
+
+      - name: Build FriBidi
+        shell: msys2 {0}
+        run: |
+          ./scripts/build-fribidi.sh
+
+      - name: Build HarfBuzz
+        shell: msys2 {0}
+        run: |
+          ./scripts/build-harfbuzz.sh
+
+      - name: Build libass
+        shell: msys2 {0}
+        run: |
+          ./scripts/build-libass.sh
