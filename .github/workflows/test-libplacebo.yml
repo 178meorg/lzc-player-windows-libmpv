@@ -1,0 +1,109 @@
+name: Test libplacebo
+
+on:
+  workflow_dispatch:
+
+  push:
+    paths:
+      - "scripts/build-vulkan-headers.sh"
+      - "scripts/build-vulkan-loader.sh"
+      - "scripts/build-spirv-cross.sh"
+      - "scripts/build-glslang.sh"
+      - "scripts/build-shaderc.sh"
+      - "scripts/build-lcms2.sh"
+      - "scripts/build-libdovi.sh"
+      - "scripts/build-xxhash.sh"
+      - "scripts/build-libplacebo.sh"
+      - "config/versions.env"
+
+jobs:
+  build-libplacebo:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            curl
+            wget
+            tar
+            xz
+            pkgconf
+            make
+            cmake
+            ninja
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-meson
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-jinja
+            mingw-w64-x86_64-python-glad
+            mingw-w64-x86_64-rust
+            mingw-w64-x86_64-cargo-c
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-yasm
+
+      - name: Check build environment
+        run: |
+          gcc --version
+          cmake --version
+          meson --version
+          ninja --version
+          pkg-config --version
+          python --version
+          rustc --version
+          cargo --version
+
+      - name: Build Vulkan-Headers
+        run: ./scripts/build-vulkan-headers.sh
+
+      - name: Build Vulkan-Loader
+        run: ./scripts/build-vulkan-loader.sh
+
+      - name: Build SPIRV-Cross
+        run: ./scripts/build-spirv-cross.sh
+
+      - name: Build SPIRV-Headers
+        run: ./scripts/build-spirv-headers.sh
+
+      - name: Build SPIRV-Tools
+        run: ./scripts/build-spirv-tools.sh
+
+      - name: Build glslang
+        run: ./scripts/build-glslang.sh
+
+      - name: Build shaderc
+        run: ./scripts/build-shaderc.sh
+
+      - name: Build LCMS2
+        run: ./scripts/build-lcms2.sh
+
+      - name: Build libdovi
+        run: ./scripts/build-libdovi.sh
+
+      - name: Build libplacebo
+        run: ./scripts/build-libplacebo.sh
+
+      - name: List installed files
+        run: |
+          echo "===== include ====="
+          find "${PREFIX}/include" -maxdepth 2 -type f | sort || true
+
+          echo "===== lib ====="
+          find "${PREFIX}/lib" -maxdepth 1 -type f | sort || true
+
+          echo "===== bin ====="
+          find "${PREFIX}/bin" -maxdepth 1 -type f | sort || true
