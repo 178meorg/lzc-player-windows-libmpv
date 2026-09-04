@@ -12,7 +12,7 @@ NAME="freetype-${FREETYPE_VERSION}"
 TARBALL="${SRC_ROOT}/${NAME}.tar.xz"
 SOURCE_DIR="${SRC_ROOT}/${NAME}"
 
-URL="https://download.savannah.gnu.org/releases/freetype/${NAME}.tar.xz"
+URL="https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.xz"
 
 export PATH="/mingw64/bin:${PREFIX}/bin:${PATH}"
 export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
