@@ -1,7 +1,7 @@
-name: Build Windows Dependencies
+name: Build mpv
 
 on:
-  workflow_dispatch:
+  push:
 
 jobs:
   build:
@@ -22,26 +22,38 @@ jobs:
           update: true
           install: >-
             base-devel
-            curl
             git
-            make
+            curl
+            wget
+            tar
+            xz
             pkgconf
+            make
+            cmake
+            ninja
             mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-nasm
-            mingw-w64-x86_64-yasm
+            mingw-w64-x86_64-cmake
             mingw-w64-x86_64-meson
             mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-jinja
+            mingw-w64-x86_64-python-glad
             mingw-w64-x86_64-rust
+            mingw-w64-x86_64-cargo-c
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-yasm
 
       - name: Check build tools
         shell: msys2 {0}
         run: |
           gcc --version
-          make --version
+          cmake --version
           meson --version
           ninja --version
-          cargo --version
           pkg-config --version
+          python --version
+          rustc --version
+          cargo --version
 
       - name: Build FFmpeg
         run: |
@@ -66,3 +78,36 @@ jobs:
         shell: msys2 {0}
         run: |
           ./scripts/build-libass.sh
+      
+      - name: Build Vulkan-Headers
+        run: ./scripts/build-vulkan-headers.sh
+
+      - name: Build Vulkan-Loader
+        run: ./scripts/build-vulkan-loader.sh
+
+      - name: Build SPIRV-Cross
+        run: ./scripts/build-spirv-cross.sh
+
+      - name: Build SPIRV-Headers
+        run: ./scripts/build-spirv-headers.sh
+
+      - name: Build SPIRV-Tools
+        run: ./scripts/build-spirv-tools.sh
+
+      - name: Build glslang
+        run: ./scripts/build-glslang.sh
+
+      - name: Build shaderc
+        run: ./scripts/build-shaderc.sh
+
+      - name: Build LCMS2
+        run: ./scripts/build-lcms2.sh
+
+      - name: Build libdovi
+        run: ./scripts/build-libdovi.sh
+
+      - name: Build libplacebo
+        run: ./scripts/build-libplacebo.sh
+      
+      - name: Build mpv
+        run: ./scripts/build-mpv.sh
