@@ -56,6 +56,7 @@ echo "Building libdovi..."
 cargo cinstall \
     --target x86_64-pc-windows-gnu \
     --release \
+    --library-type=staticlib \
     --prefix="${PREFIX}" \
     --libdir="${PREFIX}/lib"
 

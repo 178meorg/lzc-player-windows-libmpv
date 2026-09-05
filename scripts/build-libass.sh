@@ -54,8 +54,8 @@ echo "----------------------------------------"
 
 ./configure \
     --prefix="${PREFIX}" \
-    --enable-shared \
-    --disable-static \
+    --enable-static \
+    --disable-shared \
     --disable-doc
 
 echo

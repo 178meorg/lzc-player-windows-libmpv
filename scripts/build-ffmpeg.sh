@@ -125,8 +125,8 @@ log "Configuring FFmpeg"
     --prefix="${INSTALL_PREFIX}" \
     --target-os=mingw32 \
     --arch=x86_64 \
-    --enable-shared \
-    --disable-static \
+    --disable-shared \
+    --enable-static \
     --disable-debug \
     --disable-doc \
     --disable-programs \
@@ -175,27 +175,36 @@ for lib in "${required_libraries[@]}"; do
     version="$(pkg-config --modversion "${lib}")"
 
     echo "${lib}: ${version}"
+
+    static_library="${INSTALL_PREFIX}/lib/${lib}.a"
+    if [[ ! -f "${static_library}" ]]; then
+        die "Static library not found: ${static_library}"
+    fi
 done
 
 echo
-echo "FFmpeg libraries:"
+echo "FFmpeg static libraries:"
 
 find "${INSTALL_PREFIX}/lib" \
     -maxdepth 1 \
     -type f \
-    -name '*.dll.a' \
+    -name '*.a' \
     -printf '  %f\n' \
     | sort
 
 echo
 echo "FFmpeg DLLs:"
 
-find "${INSTALL_PREFIX}/bin" \
-    -maxdepth 1 \
-    -type f \
-    -name '*.dll' \
-    -printf '  %f\n' \
-    | sort
+if [[ -d "${INSTALL_PREFIX}/bin" ]]; then
+    find "${INSTALL_PREFIX}/bin" \
+        -maxdepth 1 \
+        -type f \
+        -name '*.dll' \
+        -printf '  %f\n' \
+        | sort
+else
+    echo "  none (static build)"
+fi
 
 echo
 echo "Headers:"

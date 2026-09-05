@@ -26,6 +26,9 @@ export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig${PKG_C
 NAME="mpv"
 SRC_DIR="${SRC_ROOT}/${NAME}"
 BUILD_DIR="${WORK_ROOT}/${NAME}"
+PACKAGE_NAME="libmpv-windows-x86_64"
+PACKAGE_DIR="${BUILD_ROOT}/${PACKAGE_NAME}"
+PACKAGE_ARCHIVE="${BUILD_ROOT}/${PACKAGE_NAME}.zip"
 
 echo "========================================"
 echo "Building mpv"
@@ -90,6 +93,8 @@ meson setup "${BUILD_DIR}" \
     --prefix="${PREFIX}" \
     --libdir=lib \
     --buildtype=release \
+    --default-library=shared \
+    --prefer-static \
     -Dlibmpv=true \
     -Dbuild-date=false \
     -Dmanpage-build=disabled \
@@ -145,12 +150,33 @@ find "${PREFIX}" \
     -maxdepth 3 \
     -type f \
     \( \
-        -name 'libmpv*.dll' \
-        -o -name 'libmpv*.dll.a' \
-        -o -name 'libmpv*.a' \
-        -o -name 'mpv*.dll' \
+        -name 'libmpv.a' \
+        -o -name 'libmpv.dll.a' \
+        -o -name 'libmpv-2.dll' \
     \) \
     -print
+
+test -d "${PREFIX}/include/mpv"
+test -f "${PREFIX}/lib/libmpv.dll.a"
+test -f "${PREFIX}/bin/libmpv-2.dll"
+
+rm -rf "${PACKAGE_DIR}" "${PACKAGE_ARCHIVE}"
+mkdir -p "${PACKAGE_DIR}/include"
+
+cp -R "${PREFIX}/include/mpv" "${PACKAGE_DIR}/include/"
+cp "${PREFIX}/lib/libmpv.dll.a" "${PACKAGE_DIR}/"
+cp "${PREFIX}/bin/libmpv-2.dll" "${PACKAGE_DIR}/"
+
+(
+    cd "${BUILD_ROOT}"
+    zip -r "${PACKAGE_ARCHIVE}" "${PACKAGE_NAME}" >/dev/null
+)
+
+test -s "${PACKAGE_ARCHIVE}"
+
+echo
+echo "Package created:"
+echo "  ${PACKAGE_ARCHIVE}"
 
 echo
 echo "========================================"

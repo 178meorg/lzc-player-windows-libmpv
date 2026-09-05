@@ -46,6 +46,7 @@ meson setup build \
     --prefix="${PREFIX}" \
     --libdir=lib \
     --buildtype=release \
+    --default-library=static \
     -Ddocs=false \
     -Dtests=false
 

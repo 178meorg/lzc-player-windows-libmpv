@@ -46,6 +46,7 @@ meson setup "${BUILD_DIR}" \
     --prefix="${PREFIX}" \
     --libdir=lib \
     --buildtype=release \
+    --default-library=static \
     -Dtests=false \
     -Dbench=false \
     -Ddemos=false \
@@ -74,4 +75,4 @@ echo "========================================"
 echo
 echo "Enabled features:"
 meson configure "${BUILD_DIR}" | grep -Ei \
-    'vulkan|d3d11|opengl|shaderc|glslang|lcms|dovi|xxhash'
+    'vulkan|d3d11|opengl|shaderc|glslang|lcms|dovi' || true

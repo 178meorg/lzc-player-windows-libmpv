@@ -49,7 +49,7 @@ cd "${SOURCE_DIR}"
     --prefix="${PREFIX}" \
     --libdir="${PREFIX}/lib" \
     --enable-static \
-    --enable-shared
+    --disable-shared
 
 make -j"$(nproc)"
 

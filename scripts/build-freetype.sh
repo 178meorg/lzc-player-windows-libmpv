@@ -47,8 +47,8 @@ cd build
 
 ../configure \
     --prefix="${PREFIX}" \
-    --enable-shared \
-    --disable-static \
+    --disable-shared \
+    --enable-static \
     --disable-docs \
     --without-zlib \
     --without-bzip2 \
@@ -66,5 +66,10 @@ echo "========================================"
 
 pkg-config --modversion freetype2
 
-ls -la "${PREFIX}/bin" | grep -i freetype || true
-ls -la "${PREFIX}/lib" | grep -i freetype || true
+if [[ -d "${PREFIX}/bin" ]]; then
+    ls -la "${PREFIX}/bin" | grep -i freetype || true
+fi
+
+if [[ -d "${PREFIX}/lib" ]]; then
+    ls -la "${PREFIX}/lib" | grep -i freetype || true
+fi

@@ -27,8 +27,8 @@ cmake \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-    -DSPIRV_CROSS_SHARED=ON \
-    -DSPIRV_CROSS_STATIC=OFF \
+    -DSPIRV_CROSS_SHARED=OFF \
+    -DSPIRV_CROSS_STATIC=ON \
     -DSPIRV_CROSS_CLI=OFF \
     -DSPIRV_CROSS_ENABLE_TESTS=OFF \
     -DSPIRV_CROSS_ENABLE_MSL=ON \
@@ -41,4 +41,4 @@ cmake --install "${BUILD_DIR}"
 
 echo "==> SPIRV-Cross ${VERSION} build completed"
 
-pkg-config --modversion spirv-cross-c-shared || true
+pkg-config --modversion spirv-cross-c || true

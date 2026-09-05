@@ -3,19 +3,6 @@ name: Test libplacebo
 on:
   workflow_dispatch:
 
-  push:
-    paths:
-      - "scripts/build-vulkan-headers.sh"
-      - "scripts/build-vulkan-loader.sh"
-      - "scripts/build-spirv-cross.sh"
-      - "scripts/build-glslang.sh"
-      - "scripts/build-shaderc.sh"
-      - "scripts/build-lcms2.sh"
-      - "scripts/build-libdovi.sh"
-      - "scripts/build-xxhash.sh"
-      - "scripts/build-libplacebo.sh"
-      - "config/versions.env"
-
 jobs:
   build-libplacebo:
     runs-on: windows-latest

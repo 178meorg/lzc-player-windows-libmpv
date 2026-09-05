@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -24,6 +24,7 @@ jobs:
             base-devel
             git
             curl
+            zip
             wget
             tar
             xz
@@ -111,3 +112,10 @@ jobs:
       
       - name: Build mpv
         run: ./scripts/build-mpv.sh
+
+      - name: Upload libmpv package
+        uses: actions/upload-artifact@v4
+        with:
+          name: libmpv-windows-x86_64
+          path: build/libmpv-windows-x86_64.zip
+          if-no-files-found: error
