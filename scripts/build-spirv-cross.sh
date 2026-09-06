@@ -39,6 +39,13 @@ cmake \
 cmake --build "${BUILD_DIR}"
 cmake --install "${BUILD_DIR}"
 
+STATIC_PC="${PREFIX}/lib/pkgconfig/spirv-cross-c.pc"
+if [[ -f "${STATIC_PC}" ]]; then
+    sed -i \
+        's|^Libs:.*|Libs: -L${libdir} -lspirv-cross-c -lspirv-cross-cpp -lspirv-cross-hlsl -lspirv-cross-msl -lspirv-cross-reflect -lspirv-cross-glsl -lspirv-cross-core|' \
+        "${STATIC_PC}"
+fi
+
 echo "==> SPIRV-Cross ${VERSION} build completed"
 
 pkg-config --modversion spirv-cross-c || true

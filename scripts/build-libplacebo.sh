@@ -38,6 +38,9 @@ if [[ ! -d "${SRC_DIR}" ]]; then
         "${SRC_DIR}"
 fi
 
+sed -i 's/spirv-cross-c-shared/spirv-cross-c/g' \
+    "${SRC_DIR}/src/d3d11/meson.build"
+
 rm -rf "${BUILD_DIR}"
 
 cd "${SRC_DIR}"
