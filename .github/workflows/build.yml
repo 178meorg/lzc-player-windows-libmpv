@@ -1,7 +1,7 @@
 name: Build mpv
 
-on:
-  push:
+# on:
+#   push:
 
 jobs:
   build:
@@ -133,6 +133,15 @@ jobs:
 
       - name: Build libplacebo
         run: ./scripts/build-libplacebo.sh
+
+      - name: Build FFmpeg headers
+        run: ./scripts/build-ffmpeg-headers.sh
+
+      - name: Build FFmpeg extra dependencies
+        run: ./scripts/build-ffmpeg-extra.sh
+
+      - name: Build FFmpeg codec dependencies
+        run: ./scripts/build-ffmpeg-codecs.sh
 
       - name: Build FFmpeg
         run: ./scripts/build-ffmpeg.sh

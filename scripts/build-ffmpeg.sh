@@ -15,10 +15,13 @@ FFMPEG_SOURCE="${SRC_ROOT}/${FFMPEG_NAME}"
 
 FFMPEG_URL="https://ffmpeg.org/releases/${FFMPEG_NAME}.tar.xz"
 
-export PATH="/mingw64/bin:${PATH}"
+export PATH="${INSTALL_PREFIX}/bin:/mingw64/bin:${PATH}"
 
-# 让后面的依赖统一从我们自己的 PREFIX 查找
-export PKG_CONFIG_PATH="${INSTALL_PREFIX}/lib/pkgconfig"
+# Keep both pkg-config locations: Meson/CMake dependencies may install .pc
+# files under either lib/pkgconfig or share/pkgconfig.
+export PKG_CONFIG_PATH="${INSTALL_PREFIX}/lib/pkgconfig:${INSTALL_PREFIX}/share/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+export CPPFLAGS="-I${INSTALL_PREFIX}/include ${CPPFLAGS:-}"
+export LDFLAGS="-L${INSTALL_PREFIX}/lib ${LDFLAGS:-}"
 
 log() {
     printf '\n\033[1;32m==> %s\033[0m\n' "$*"
@@ -121,6 +124,14 @@ make distclean >/dev/null 2>&1 || true
 
 log "Configuring FFmpeg"
 
+if ! pkg-config --exists 'libplacebo >= 7.351.0'; then
+    echo "pkg-config search path: ${PKG_CONFIG_PATH}" >&2
+    find "${INSTALL_PREFIX}" -type f \( -name 'libplacebo*.pc' -o -name 'shaderc*.pc' -o -name 'spirv-cross*.pc' \) -print >&2
+    die "libplacebo >= 7.351.0 is not available through pkg-config"
+fi
+
+echo "libplacebo: $(pkg-config --modversion libplacebo)"
+
 ./configure \
     --prefix="${INSTALL_PREFIX}" \
     --target-os=mingw32 \
@@ -133,6 +144,29 @@ log "Configuring FFmpeg"
     --enable-libfreetype \
     --enable-libfribidi \
     --enable-libharfbuzz \
+    --enable-libmp3lame \
+    --enable-libopus \
+    --enable-libspeex \
+    --enable-libvorbis \
+    --enable-libsoxr \
+    --enable-libvpx \
+    --enable-libwebp \
+    --enable-libx264 \
+    --enable-libx265 \
+    --enable-libaom \
+    --enable-libsvtav1 \
+    --enable-libdav1d \
+    --enable-libbluray \
+    --enable-libdvdnav \
+    --enable-libdvdread \
+    --enable-libmodplug \
+    --enable-libzimg \
+    --enable-libmysofa \
+    --enable-libssh \
+    --enable-libsrt \
+    --enable-libvpl \
+    --enable-openal \
+    --enable-libfontconfig \
     --enable-lcms2 \
     --enable-openssl \
     --enable-libxml2 \
