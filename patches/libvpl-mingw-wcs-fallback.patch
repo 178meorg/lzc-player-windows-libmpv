@@ -1,0 +1,17 @@
+Subject: Restrict legacy wide-string fallbacks to old MSVC
+Upstream: https://github.com/intel/libvpl/pull/198
+Commit: 9cb2dc5643480bde33909e11b0ec1ddeb6339f45
+
+MinGW provides wcscpy_s and wcscat_s. Since _MSC_VER is undefined there,
+the old condition wrongly enables statement macros that break expressions
+in newer mingw-w64 stralign.h. Backport the upstream compiler guard.
+
+diff --git a/libvpl/src/windows/mfx_dispatcher_defs.h b/libvpl/src/windows/mfx_dispatcher_defs.h
+--- a/libvpl/src/windows/mfx_dispatcher_defs.h
++++ b/libvpl/src/windows/mfx_dispatcher_defs.h
+@@ -20,4 +20,4 @@
+-#if _MSC_VER < 1400
++#if defined(_MSC_VER) && _MSC_VER < 1400
+     #define wcscpy_s(to, to_size, from) \
+         (void)(to_size);                \
+         wcscpy(to, from)

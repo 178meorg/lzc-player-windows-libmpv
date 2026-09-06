@@ -1,0 +1,192 @@
+name: Build FFmpeg full codec set
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-ffmpeg-full.yml"
+      - "config/versions.env"
+      - "scripts/build-ffmpeg*.sh"
+      - "scripts/build-*.sh"
+      - "patches/**"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            autoconf
+            automake
+            libtool
+            gperf
+            git
+            curl
+            zip
+            wget
+            tar
+            xz
+            pkgconf
+            make
+            cmake
+            ninja
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-meson
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-jinja
+            mingw-w64-x86_64-python-glad
+            mingw-w64-x86_64-rust
+            mingw-w64-x86_64-cargo-c
+            perl
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-yasm
+
+      - name: Check build tools
+        run: |
+          autoreconf --version
+          autoconf --version
+          automake --version
+          aclocal --version
+          libtoolize --version
+          gperf --version
+          gcc --version
+          cmake --version
+          meson --version
+          ninja --version
+          pkg-config --version
+          python --version
+          rustc --version
+          cargo --version
+          cargo cinstall --help >/dev/null
+
+      # Save the completed prerequisite prefix before the long codec build.
+      # Changes to the codec/FFmpeg scripts must not invalidate this checkpoint.
+      - name: Restore FFmpeg prerequisites
+        id: prerequisite-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-prerequisites-v2-${{ hashFiles('config/versions.env', 'patches/libvpl-mingw-wcs-fallback.patch', 'scripts/build-*.sh', '!scripts/build-ffmpeg-codecs.sh', '!scripts/build-ffmpeg.sh', '!scripts/build-mpv.sh') }}
+
+      # Extra dependency fixes should not rebuild the base libraries and Vulkan stack.
+      - name: Restore FFmpeg base dependencies
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        id: base-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-base-v1-${{ hashFiles('config/versions.env', 'patches/libvpl-mingw-wcs-fallback.patch', 'scripts/build-*.sh', '!scripts/build-ffmpeg-extra.sh', '!scripts/build-ffmpeg-codecs.sh', '!scripts/build-ffmpeg.sh', '!scripts/build-mpv.sh') }}
+
+      - name: Build base libraries
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        run: |
+          ./scripts/build-freetype.sh
+          ./scripts/build-fribidi.sh
+          ./scripts/build-harfbuzz.sh
+          ./scripts/build-libass.sh
+          ./scripts/build-zlib-ng.sh
+          ./scripts/build-zstd.sh
+          ./scripts/build-bzip2.sh
+          ./scripts/build-lzo.sh
+          ./scripts/build-xz.sh
+          ./scripts/build-openssl.sh
+          ./scripts/build-libiconv.sh
+          ./scripts/build-libxml2.sh
+          ./scripts/build-lcms2.sh
+
+      - name: Build Vulkan and libplacebo
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        run: |
+          ./scripts/build-vulkan-headers.sh
+          ./scripts/build-vulkan-loader.sh
+          ./scripts/build-spirv-cross.sh
+          ./scripts/build-spirv-headers.sh
+          ./scripts/build-spirv-tools.sh
+          ./scripts/build-glslang.sh
+          ./scripts/build-shaderc.sh
+          ./scripts/build-libdovi.sh
+          ./scripts/build-libplacebo.sh
+
+      - name: Install FFmpeg headers
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        run: ./scripts/build-ffmpeg-headers.sh
+
+      - name: Save FFmpeg base dependencies
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.base-cache.outputs.cache-primary-key }}
+
+      - name: Restore FFmpeg extra source archives
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        id: extra-source-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/downloads/ffmpeg-extra
+          key: ffmpeg-extra-sources-v1-${{ hashFiles('config/versions.env', 'scripts/build-download.sh', 'scripts/build-ffmpeg-extra.sh') }}
+          restore-keys: |
+            ffmpeg-extra-sources-v1-
+
+      - name: Build FFmpeg extra dependencies
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        run: ./scripts/build-ffmpeg-extra.sh
+
+      - name: Save FFmpeg prerequisites
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.prerequisite-cache.outputs.cache-primary-key }}
+
+      - name: Save FFmpeg extra source archives
+        if: ${{ success() && steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.extra-source-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: build/downloads/ffmpeg-extra
+          key: ${{ steps.extra-source-cache.outputs.cache-primary-key }}
+
+      - name: Restore FFmpeg codec dependencies
+        id: codec-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-codecs-v1-${{ steps.prerequisite-cache.outputs.cache-primary-key }}-${{ hashFiles('scripts/build-ffmpeg-codecs.sh', 'patches/aom-nasm-3-help.patch', 'patches/x265-cmake-4-policies.patch') }}
+
+      - name: Build FFmpeg codec dependencies
+        if: steps.codec-cache.outputs.cache-hit != 'true'
+        run: ./scripts/build-ffmpeg-codecs.sh
+
+      - name: Save FFmpeg codec dependencies
+        if: steps.codec-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.codec-cache.outputs.cache-primary-key }}
+
+      - name: Build FFmpeg
+        run: ./scripts/build-ffmpeg.sh
+
+      - name: Verify FFmpeg features
+        run: |
+          test -f build/install/lib/libavcodec.a
+          test -f build/install/lib/libavformat.a
+          test -f build/install/lib/libavfilter.a
+          pkg-config --exists libavcodec
+          pkg-config --exists libavformat
+          pkg-config --exists libavfilter
