@@ -1,7 +1,7 @@
 name: Build mpv
 
-on:
-  push:
+# on:
+#   push:
 
 jobs:
   build:
@@ -22,6 +22,10 @@ jobs:
           update: true
           install: >-
             base-devel
+            autoconf
+            automake
+            libtool
+            gperf
             git
             curl
             zip
@@ -48,6 +52,12 @@ jobs:
       - name: Check build tools
         shell: msys2 {0}
         run: |
+          autoreconf --version
+          autoconf --version
+          automake --version
+          aclocal --version
+          libtoolize --version
+          gperf --version
           gcc --version
           cmake --version
           meson --version
@@ -134,6 +144,15 @@ jobs:
       - name: Build libplacebo
         run: ./scripts/build-libplacebo.sh
 
+      - name: Build FFmpeg headers
+        run: ./scripts/build-ffmpeg-headers.sh
+
+      - name: Build FFmpeg extra dependencies
+        run: ./scripts/build-ffmpeg-extra.sh
+
+      - name: Build FFmpeg codec dependencies
+        run: ./scripts/build-ffmpeg-codecs.sh
+
       - name: Build FFmpeg
         run: ./scripts/build-ffmpeg.sh
       
@@ -141,7 +160,7 @@ jobs:
         run: ./scripts/build-mpv.sh
 
       - name: Upload libmpv package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: libmpv-windows-x86_64
           path: build/libmpv-windows-x86_64.zip
