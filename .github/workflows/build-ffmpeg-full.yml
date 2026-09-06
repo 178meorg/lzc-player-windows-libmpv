@@ -1,0 +1,113 @@
+name: Build FFmpeg full codec set
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-ffmpeg-full.yml"
+      - "config/versions.env"
+      - "scripts/build-ffmpeg*.sh"
+      - "scripts/build-*.sh"
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            curl
+            zip
+            wget
+            tar
+            xz
+            pkgconf
+            make
+            cmake
+            ninja
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-meson
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-jinja
+            mingw-w64-x86_64-python-glad
+            mingw-w64-x86_64-rust
+            mingw-w64-x86_64-cargo-c
+            perl
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-yasm
+
+      - name: Check build tools
+        run: |
+          gcc --version
+          cmake --version
+          meson --version
+          ninja --version
+          pkg-config --version
+          python --version
+          rustc --version
+          cargo --version
+          cargo cinstall --help >/dev/null
+
+      - name: Build base libraries
+        run: |
+          ./scripts/build-freetype.sh
+          ./scripts/build-fribidi.sh
+          ./scripts/build-harfbuzz.sh
+          ./scripts/build-libass.sh
+          ./scripts/build-zlib-ng.sh
+          ./scripts/build-zstd.sh
+          ./scripts/build-bzip2.sh
+          ./scripts/build-lzo.sh
+          ./scripts/build-xz.sh
+          ./scripts/build-openssl.sh
+          ./scripts/build-libiconv.sh
+          ./scripts/build-libxml2.sh
+          ./scripts/build-lcms2.sh
+
+      - name: Build Vulkan and libplacebo
+        run: |
+          ./scripts/build-vulkan-headers.sh
+          ./scripts/build-vulkan-loader.sh
+          ./scripts/build-spirv-cross.sh
+          ./scripts/build-spirv-headers.sh
+          ./scripts/build-spirv-tools.sh
+          ./scripts/build-glslang.sh
+          ./scripts/build-shaderc.sh
+          ./scripts/build-libdovi.sh
+          ./scripts/build-libplacebo.sh
+
+      - name: Install FFmpeg headers
+        run: ./scripts/build-ffmpeg-headers.sh
+
+      - name: Build FFmpeg extra dependencies
+        run: ./scripts/build-ffmpeg-extra.sh
+
+      - name: Build FFmpeg codec dependencies
+        run: ./scripts/build-ffmpeg-codecs.sh
+
+      - name: Build FFmpeg
+        run: ./scripts/build-ffmpeg.sh
+
+      - name: Verify FFmpeg features
+        run: |
+          test -f build/install/lib/libavcodec.a
+          test -f build/install/lib/libavformat.a
+          test -f build/install/lib/libavfilter.a
+          pkg-config --exists libavcodec
+          pkg-config --exists libavformat
+          pkg-config --exists libavfilter
