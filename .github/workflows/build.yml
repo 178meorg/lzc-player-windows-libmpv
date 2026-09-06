@@ -41,6 +41,7 @@ jobs:
             mingw-w64-x86_64-python-glad
             mingw-w64-x86_64-rust
             mingw-w64-x86_64-cargo-c
+            perl
             mingw-w64-x86_64-nasm
             mingw-w64-x86_64-yasm
 
@@ -56,10 +57,6 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Build FFmpeg
-        run: |
-          ./scripts/build-ffmpeg.sh
-      
       - name: Build FreeType
         shell: msys2 {0}
         run: |
@@ -79,6 +76,33 @@ jobs:
         shell: msys2 {0}
         run: |
           ./scripts/build-libass.sh
+
+      - name: Build zlib-ng
+        run: ./scripts/build-zlib-ng.sh
+
+      - name: Build zstd
+        run: ./scripts/build-zstd.sh
+
+      - name: Build bzip2
+        run: ./scripts/build-bzip2.sh
+
+      - name: Build lzo
+        run: ./scripts/build-lzo.sh
+
+      - name: Build xz
+        run: ./scripts/build-xz.sh
+
+      - name: Build OpenSSL
+        run: ./scripts/build-openssl.sh
+
+      - name: Build libiconv
+        run: ./scripts/build-libiconv.sh
+
+      - name: Build libxml2
+        run: ./scripts/build-libxml2.sh
+
+      - name: Build libarchive
+        run: ./scripts/build-libarchive.sh
       
       - name: Build Vulkan-Headers
         run: ./scripts/build-vulkan-headers.sh
@@ -109,6 +133,9 @@ jobs:
 
       - name: Build libplacebo
         run: ./scripts/build-libplacebo.sh
+
+      - name: Build FFmpeg
+        run: ./scripts/build-ffmpeg.sh
       
       - name: Build mpv
         run: ./scripts/build-mpv.sh

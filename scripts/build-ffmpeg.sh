@@ -125,6 +125,18 @@ log "Configuring FFmpeg"
     --prefix="${INSTALL_PREFIX}" \
     --target-os=mingw32 \
     --arch=x86_64 \
+    --pkg-config-flags=--static \
+    --enable-runtime-cpudetect \
+    --enable-gpl \
+    --enable-version3 \
+    --enable-libass \
+    --enable-libfreetype \
+    --enable-libfribidi \
+    --enable-libharfbuzz \
+    --enable-lcms2 \
+    --enable-openssl \
+    --enable-libxml2 \
+    --enable-libplacebo \
     --disable-shared \
     --enable-static \
     --disable-debug \
