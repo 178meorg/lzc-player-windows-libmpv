@@ -136,6 +136,20 @@ if ! pkg-config --exists --print-errors libbluray; then
 fi
 echo "libbluray: $(pkg-config --modversion libbluray)"
 
+required_external_packages=(libjxl vapoursynth-script rubberband libbs2b libaribcaption zvbi-0.2)
+for package in "${required_external_packages[@]}"; do
+    pkg-config --exists --print-errors "${package}" || die "Required FFmpeg dependency is missing: ${package}"
+done
+
+cuda_llvm_args=()
+if command -v clang >/dev/null 2>&1 && command -v llvm-config >/dev/null 2>&1 && \
+    { [[ -f "${INSTALL_PREFIX}/include/cuda.h" ]] || [[ -f /mingw64/include/cuda.h ]]; }; then
+    cuda_llvm_args+=(--enable-cuda-llvm)
+    echo "CUDA LLVM: enabled (CUDA headers and LLVM toolchain found)"
+else
+    echo "CUDA LLVM: skipped (CUDA SDK or LLVM toolchain not installed)"
+fi
+
 # Static libplacebo contains C++ code, but its pkg-config metadata omits
 # libstdc++. FFmpeg links its probes with gcc; extra-libs keeps the C++
 # runtime after the static archives during configure and in downstream links.
@@ -164,10 +178,17 @@ if ! ./configure \
     --enable-libaom \
     --enable-libsvtav1 \
     --enable-libdav1d \
+    --enable-avisynth \
+    --enable-vapoursynth \
     --enable-libbluray \
     --enable-libdvdnav \
     --enable-libdvdread \
     --enable-libmodplug \
+    --enable-libjxl \
+    --enable-librubberband \
+    --enable-libbs2b \
+    --enable-libaribcaption \
+    --enable-libzvbi \
     --enable-libzimg \
     --enable-libmysofa \
     --enable-libssh \
@@ -179,16 +200,38 @@ if ! ./configure \
     --enable-openssl \
     --enable-libxml2 \
     --enable-libplacebo \
+    --enable-cuvid \
+    --enable-nvdec \
+    --enable-nvenc \
+    --enable-amf \
+    --enable-opengl \
+    "${cuda_llvm_args[@]}" \
     --disable-shared \
     --enable-static \
     --disable-debug \
     --disable-doc \
     --disable-programs \
     --enable-pic; then
+    # AMF is checked well before the final optional stdbit probe. Include its
+    # diagnostics so the log tail does not hide the actual dependency failure.
+    echo "FFmpeg AMF configure diagnostics:" >&2
+    grep -n -A 30 -B 5 'AMF/core/Version.h' ffbuild/config.log >&2 || true
     echo "FFmpeg configure log (last 100 lines):" >&2
     tail -n 100 ffbuild/config.log >&2 || true
     die "FFmpeg configure failed"
 fi
+
+expected_config=(
+    AVISYNTH VAPOURSYNTH LIBJXL LIBRUBBERBAND LIBBS2B LIBARIBCAPTION LIBZVBI
+    CUVID NVDEC NVENC AMF OPENGL
+)
+for feature in "${expected_config[@]}"; do
+    if ! grep -Fxq "CONFIG_${feature}=yes" ffbuild/config.mak; then
+        echo "FFmpeg did not enable expected feature: ${feature}" >&2
+        grep -E '^CONFIG_(AVISYNTH|VAPOURSYNTH|LIBJXL|LIBRUBBERBAND|LIBBS2B|LIBARIBCAPTION|LIBZVBI|CUVID|NVDEC|NVENC|AMF|OPENGL)=' ffbuild/config.mak >&2 || true
+        die "FFmpeg feature configuration is incomplete"
+    fi
+done
 
 # ------------------------------------------------------------
 # Build

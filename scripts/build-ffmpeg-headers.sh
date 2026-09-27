@@ -21,9 +21,11 @@ clone_git() {
         mkdir -p "${source}"
         git -C "${source}" init --quiet
         git -C "${source}" remote add origin "${url}"
-        git -C "${source}" fetch --depth 1 origin "refs/tags/${ref}"
-        git -C "${source}" checkout --detach FETCH_HEAD
     fi
+    # Reused source directories must follow versions.env after a version bump.
+    # Keep stdout reserved for the source path captured by the caller.
+    git -C "${source}" fetch --depth 1 origin "refs/tags/${ref}" >&2
+    git -C "${source}" checkout --detach FETCH_HEAD >&2
     printf '%s\n' "${source}"
 }
 
@@ -35,17 +37,23 @@ nv_source="$(clone_git nvcodec-headers https://git.videolan.org/git/ffmpeg/nv-co
 make -C "${nv_source}" PREFIX="${PREFIX}" install
 
 avisynth_source="$(clone_git avisynth-headers https://github.com/AviSynth/AviSynthPlus.git "${AVISYNTH_VERSION}")"
-avisynth_header="$(find "${avisynth_source}" -type f -iname 'avisynth.h' -print -quit)"
-if [[ -z "${avisynth_header}" ]]; then
-    echo "AviSynth header was not found in ${avisynth_source}" >&2
-    find "${avisynth_source}" -maxdepth 4 -type f \( -name '*.h' -o -name '*.hpp' \) -print >&2
-    exit 1
-fi
-mkdir -p "${PREFIX}/include/avisynth"
-find "${avisynth_source}" -type f \( -name '*.h' -o -name '*.hpp' \) -exec cp -f {} "${PREFIX}/include/avisynth/" \;
+# AviSynth's Version.cmake calls `git describe --tags`. Preserve the current
+# checkout while ensuring the fetched version tag is available to that call.
+git -C "${avisynth_source}" fetch --depth 1 origin "+refs/tags/${AVISYNTH_VERSION}:refs/tags/${AVISYNTH_VERSION}"
+avisynth_build="${BUILD_ROOT}/work/avisynth-headers"
+cmake -S "${avisynth_source}" -B "${avisynth_build}" -G Ninja \
+    -DHEADERS_ONLY=ON \
+    -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+    -DCMAKE_INSTALL_INCLUDEDIR=include
+cmake --build "${avisynth_build}" --target VersionGen
+cmake --install "${avisynth_build}"
 
 test -f "${PREFIX}/include/AMF/core/Factory.h"
+test -f "${PREFIX}/include/AMF/core/Version.h"
 test -f "${PREFIX}/include/ffnvcodec/nvEncodeAPI.h"
-test -d "${PREFIX}/include/avisynth"
+test -f "${PREFIX}/include/avisynth/avisynth_c.h"
+test -f "${PREFIX}/include/avisynth/avs/config.h"
+test -f "${PREFIX}/include/avisynth/avs/version.h"
+test -f "${PREFIX}/include/avisynth/avs/arch.h"
 
 echo "==> FFmpeg headers installed"

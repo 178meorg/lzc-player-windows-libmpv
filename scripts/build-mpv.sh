@@ -95,11 +95,76 @@ meson setup "${BUILD_DIR}" \
     --buildtype=release \
     --default-library=shared \
     --prefer-static \
+    -Ddebug=true \
+    -Db_ndebug=true \
+    -Doptimization=3 \
+    -Db_lto=true \
+    -Dcplayer=true \
     -Dlibmpv=true \
     -Dbuild-date=false \
-    -Dmanpage-build=disabled \
-    -Dhtml-build=disabled \
-    -Dtests=false
+    -Dpdf-build=enabled \
+    -Dmanpage-build=enabled \
+    -Dhtml-build=enabled \
+    -Dtests=true \
+    -Dlua=enabled \
+    -Djavascript=enabled \
+    -Dsdl2-gamepad=enabled \
+    -Ddvdnav=enabled \
+    -Dlibarchive=enabled \
+    -Dlibbluray=enabled \
+    -Duchardet=enabled \
+    -Drubberband=enabled \
+    -Dopenal=enabled \
+    -Dlcms2=enabled \
+    -Dspirv-cross=enabled \
+    -Dvapoursynth=enabled \
+    -Dlibcurl=enabled \
+    -Dvulkan=enabled
+
+python - "${BUILD_DIR}" <<'PY'
+import json
+import subprocess
+import sys
+
+build_dir = sys.argv[1]
+options = json.loads(subprocess.check_output(
+    ["meson", "introspect", "--buildoptions", build_dir], text=True
+))
+actual = {item["name"]: item["value"] for item in options}
+expected = {
+    "cplayer": True,
+    "libmpv": True,
+    "debug": True,
+    "optimization": "3",
+    "b_lto": True,
+    "pdf-build": "enabled",
+    "manpage-build": "enabled",
+    "html-build": "enabled",
+    "tests": True,
+    "lua": "enabled",
+    "javascript": "enabled",
+    "sdl2-gamepad": "enabled",
+    "dvdnav": "enabled",
+    "libarchive": "enabled",
+    "libbluray": "enabled",
+    "uchardet": "enabled",
+    "rubberband": "enabled",
+    "openal": "enabled",
+    "lcms2": "enabled",
+    "spirv-cross": "enabled",
+    "vapoursynth": "enabled",
+    "libcurl": "enabled",
+    "vulkan": "enabled",
+}
+errors = []
+for name, wanted in expected.items():
+    got = actual.get(name, "<missing>")
+    print(f"{name}: {got} (expected {wanted})")
+    if got != wanted:
+        errors.append(f"{name}: expected {wanted}, got {got}")
+if errors:
+    raise SystemExit("Meson configuration mismatch:\n  " + "\n  ".join(errors))
+PY
 
 # ------------------------------------------------------------
 # Show configuration
@@ -157,6 +222,7 @@ find "${PREFIX}" \
     -print
 
 test -d "${PREFIX}/include/mpv"
+test -f "${PREFIX}/bin/mpv.exe"
 test -f "${PREFIX}/lib/libmpv.dll.a"
 test -f "${PREFIX}/bin/libmpv-2.dll"
 

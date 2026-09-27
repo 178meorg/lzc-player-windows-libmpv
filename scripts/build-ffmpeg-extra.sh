@@ -233,7 +233,14 @@ build_autotools_tar \
     "libdvdnav-${LIBDVDNAV_VERSION}" \
     ""
 
-for library in expat libpng libssh srt zimg libmysofa vpl openal fontconfig libbluray dvdread dvdnav libmodplug; do
+build_autotools_tar \
+    bs2b \
+    "https://downloads.sourceforge.net/project/bs2b/libbs2b/${LIBBS2B_VERSION}/libbs2b-${LIBBS2B_VERSION}.tar.bz2" \
+    "libbs2b-${LIBBS2B_VERSION}.tar.bz2" \
+    "libbs2b-${LIBBS2B_VERSION}" \
+    ""
+
+for library in expat libpng libssh srt zimg libmysofa vpl openal fontconfig libbluray dvdread dvdnav libmodplug libbs2b libjxl vapoursynth vapoursynth-script rubberband libaribcaption zvbi-0.2; do
     pkg-config --exists "${library}" || {
         echo "Missing pkg-config package: ${library}" >&2
         exit 1

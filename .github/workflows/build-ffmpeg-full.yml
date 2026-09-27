@@ -55,6 +55,11 @@ jobs:
             perl
             mingw-w64-x86_64-nasm
             mingw-w64-x86_64-yasm
+            mingw-w64-x86_64-libjxl
+            mingw-w64-x86_64-vapoursynth
+            mingw-w64-x86_64-rubberband
+            mingw-w64-x86_64-libaribcaption
+            mingw-w64-x86_64-zvbi
 
       - name: Check build tools
         run: |

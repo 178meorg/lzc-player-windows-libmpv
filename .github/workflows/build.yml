@@ -48,6 +48,18 @@ jobs:
             perl
             mingw-w64-x86_64-nasm
             mingw-w64-x86_64-yasm
+            mingw-w64-x86_64-libjxl
+            mingw-w64-x86_64-vapoursynth
+            mingw-w64-x86_64-rubberband
+            mingw-w64-x86_64-libaribcaption
+            mingw-w64-x86_64-zvbi
+            mingw-w64-x86_64-luajit
+            mingw-w64-x86_64-mujs
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-uchardet
+            mingw-w64-x86_64-curl
+            mingw-w64-x86_64-python-docutils
+            mingw-w64-x86_64-python-rst2pdf
 
       - name: Check build tools
         shell: msys2 {0}
