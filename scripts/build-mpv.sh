@@ -127,7 +127,6 @@ meson setup "${BUILD_DIR}" \
     -Dlcms2=enabled \
     -Dspirv-cross=enabled \
     -Dvapoursynth=enabled \
-    -Dlibcurl=enabled \
     -Dvulkan=enabled
 
 python - "${BUILD_DIR}" <<'PY'
@@ -162,7 +161,6 @@ expected = {
     "lcms2": "enabled",
     "spirv-cross": "enabled",
     "vapoursynth": "enabled",
-    "libcurl": "enabled",
     "vulkan": "enabled",
 }
 errors = []
