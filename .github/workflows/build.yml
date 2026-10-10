@@ -1,7 +1,13 @@
 name: Build mpv
 
-# on:
-#   push:
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build.yml"
+      - "config/versions.env"
+      - "scripts/**"
+      - "patches/**"
 
 jobs:
   build:
@@ -62,7 +68,6 @@ jobs:
             mingw-w64-x86_64-python-rst2pdf
 
       - name: Check build tools
-        shell: msys2 {0}
         run: |
           autoreconf --version
           autoconf --version
@@ -78,100 +83,144 @@ jobs:
           python --version
           rustc --version
           cargo --version
+          cargo cinstall --help >/dev/null
 
-      - name: Build FreeType
-        shell: msys2 {0}
+      # Save the completed prerequisite prefix before the long codec build.
+      # Changes to the codec/FFmpeg scripts must not invalidate this checkpoint.
+      - name: Restore FFmpeg prerequisites
+        id: prerequisite-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-prerequisites-v2-${{ hashFiles('config/versions.env', 'patches/libvpl-mingw-wcs-fallback.patch', 'scripts/build-*.sh', '!scripts/build-ffmpeg-codecs.sh', '!scripts/build-ffmpeg.sh', '!scripts/build-mpv.sh') }}
+
+      # Extra dependency fixes should not rebuild the base libraries and Vulkan stack.
+      - name: Restore FFmpeg base dependencies
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        id: base-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-base-v1-${{ hashFiles('config/versions.env', 'patches/libvpl-mingw-wcs-fallback.patch', 'scripts/build-*.sh', '!scripts/build-ffmpeg-extra.sh', '!scripts/build-ffmpeg-codecs.sh', '!scripts/build-ffmpeg.sh', '!scripts/build-mpv.sh') }}
+
+      - name: Build base libraries
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
         run: |
           ./scripts/build-freetype.sh
-
-      - name: Build FriBidi
-        shell: msys2 {0}
-        run: |
           ./scripts/build-fribidi.sh
-
-      - name: Build HarfBuzz
-        shell: msys2 {0}
-        run: |
           ./scripts/build-harfbuzz.sh
-
-      - name: Build libass
-        shell: msys2 {0}
-        run: |
           ./scripts/build-libass.sh
+          ./scripts/build-zlib-ng.sh
+          ./scripts/build-zstd.sh
+          ./scripts/build-bzip2.sh
+          ./scripts/build-lzo.sh
+          ./scripts/build-xz.sh
+          ./scripts/build-openssl.sh
+          ./scripts/build-libiconv.sh
+          ./scripts/build-libxml2.sh
+          ./scripts/build-lcms2.sh
 
-      - name: Build zlib-ng
-        run: ./scripts/build-zlib-ng.sh
+      - name: Build Vulkan and libplacebo
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        run: |
+          ./scripts/build-vulkan-headers.sh
+          ./scripts/build-vulkan-loader.sh
+          ./scripts/build-spirv-cross.sh
+          ./scripts/build-spirv-headers.sh
+          ./scripts/build-spirv-tools.sh
+          ./scripts/build-glslang.sh
+          ./scripts/build-shaderc.sh
+          ./scripts/build-libdovi.sh
+          ./scripts/build-libplacebo.sh
 
-      - name: Build zstd
-        run: ./scripts/build-zstd.sh
-
-      - name: Build bzip2
-        run: ./scripts/build-bzip2.sh
-
-      - name: Build lzo
-        run: ./scripts/build-lzo.sh
-
-      - name: Build xz
-        run: ./scripts/build-xz.sh
-
-      - name: Build OpenSSL
-        run: ./scripts/build-openssl.sh
-
-      - name: Build libiconv
-        run: ./scripts/build-libiconv.sh
-
-      - name: Build libxml2
-        run: ./scripts/build-libxml2.sh
-
-      - name: Build libarchive
-        run: ./scripts/build-libarchive.sh
-      
-      - name: Build Vulkan-Headers
-        run: ./scripts/build-vulkan-headers.sh
-
-      - name: Build Vulkan-Loader
-        run: ./scripts/build-vulkan-loader.sh
-
-      - name: Build SPIRV-Cross
-        run: ./scripts/build-spirv-cross.sh
-
-      - name: Build SPIRV-Headers
-        run: ./scripts/build-spirv-headers.sh
-
-      - name: Build SPIRV-Tools
-        run: ./scripts/build-spirv-tools.sh
-
-      - name: Build glslang
-        run: ./scripts/build-glslang.sh
-
-      - name: Build shaderc
-        run: ./scripts/build-shaderc.sh
-
-      - name: Build LCMS2
-        run: ./scripts/build-lcms2.sh
-
-      - name: Build libdovi
-        run: ./scripts/build-libdovi.sh
-
-      - name: Build libplacebo
-        run: ./scripts/build-libplacebo.sh
-
-      - name: Build FFmpeg headers
+      - name: Install FFmpeg headers
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg-headers.sh
 
+      - name: Save FFmpeg base dependencies
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.base-cache.outputs.cache-primary-key }}
+
+      - name: Restore FFmpeg extra source archives
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        id: extra-source-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/downloads/ffmpeg-extra
+          key: ffmpeg-extra-sources-v1-${{ hashFiles('config/versions.env', 'scripts/build-download.sh', 'scripts/build-ffmpeg-extra.sh') }}
+          restore-keys: |
+            ffmpeg-extra-sources-v1-
+
       - name: Build FFmpeg extra dependencies
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg-extra.sh
 
+      - name: Save FFmpeg prerequisites
+        if: steps.prerequisite-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.prerequisite-cache.outputs.cache-primary-key }}
+
+      - name: Save FFmpeg extra source archives
+        if: ${{ success() && steps.prerequisite-cache.outputs.cache-hit != 'true' && steps.extra-source-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: build/downloads/ffmpeg-extra
+          key: ${{ steps.extra-source-cache.outputs.cache-primary-key }}
+
+      - name: Restore FFmpeg codec dependencies
+        id: codec-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-codecs-v1-${{ steps.prerequisite-cache.outputs.cache-primary-key }}-${{ hashFiles('scripts/build-ffmpeg-codecs.sh', 'patches/aom-nasm-3-help.patch', 'patches/x265-cmake-4-policies.patch') }}
+
       - name: Build FFmpeg codec dependencies
+        if: steps.codec-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg-codecs.sh
+
+      - name: Save FFmpeg codec dependencies
+        if: steps.codec-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.codec-cache.outputs.cache-primary-key }}
 
       - name: Build FFmpeg
         run: ./scripts/build-ffmpeg.sh
-      
+
+      - name: Verify FFmpeg features
+        run: |
+          export PKG_CONFIG_PATH="$PWD/build/install/lib/pkgconfig:$PWD/build/install/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          for library in libavcodec libavformat libavfilter; do
+            test -f "build/install/lib/${library}.a" || {
+              echo "Missing static library: build/install/lib/${library}.a" >&2
+              exit 1
+            }
+            pkg-config --exists --print-errors "$library" || {
+              echo "pkg-config search path: $PKG_CONFIG_PATH" >&2
+              find build/install -type f -name "${library}.pc" -print >&2
+              exit 1
+            }
+            echo "$library: $(pkg-config --modversion "$library")"
+          done
+
+      - name: Build libarchive
+        run: ./scripts/build-libarchive.sh
+
       - name: Build mpv
         run: ./scripts/build-mpv.sh
 
-      - name: Upload libmpv package
+      - name: Verify mpv executable
+        run: |
+          export PATH="$PWD/build/install/bin:$PATH"
+          ./build/install/bin/mpv.exe --version
+
+      - name: Upload mpv package
         uses: actions/upload-artifact@v6
         with:
           name: libmpv-windows-x86_64

@@ -2,13 +2,6 @@ name: Build FFmpeg full codec set
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/build-ffmpeg-full.yml"
-      - "config/versions.env"
-      - "scripts/build-ffmpeg*.sh"
-      - "scripts/build-*.sh"
-      - "patches/**"
 
 jobs:
   build:
