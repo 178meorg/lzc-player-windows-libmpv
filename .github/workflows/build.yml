@@ -189,7 +189,15 @@ jobs:
           path: build/install
           key: ${{ steps.codec-cache.outputs.cache-primary-key }}
 
+      - name: Restore FFmpeg
+        id: ffmpeg-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-v1-${{ steps.codec-cache.outputs.cache-primary-key }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+
       - name: Build FFmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg.sh
 
       - name: Verify FFmpeg features
@@ -208,8 +216,37 @@ jobs:
             echo "$library: $(pkg-config --modversion "$library")"
           done
 
+      - name: Save FFmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.ffmpeg-cache.outputs.cache-primary-key }}
+
+      - name: Restore libarchive
+        id: libarchive-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-libarchive-v1-${{ steps.ffmpeg-cache.outputs.cache-primary-key }}-${{ hashFiles('scripts/build-libarchive.sh') }}
+
       - name: Build libarchive
+        if: steps.libarchive-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-libarchive.sh
+
+      - name: Verify libarchive
+        run: |
+          export PKG_CONFIG_PATH="$PWD/build/install/lib/pkgconfig:$PWD/build/install/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          test -f build/install/lib/libarchive.a
+          pkg-config --exists --print-errors libarchive
+          pkg-config --modversion libarchive
+
+      - name: Save libarchive
+        if: steps.libarchive-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.libarchive-cache.outputs.cache-primary-key }}
 
       - name: Build mpv
         run: ./scripts/build-mpv.sh

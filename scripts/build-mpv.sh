@@ -108,6 +108,7 @@ meson setup "${BUILD_DIR}" \
     -Db_ndebug=true \
     -Doptimization=3 \
     -Db_lto=true \
+    -Dc_link_args=-static-libgcc \
     -Dcplayer=true \
     -Dlibmpv=true \
     -Dbuild-date=false \
@@ -232,6 +233,22 @@ test -d "${PREFIX}/include/mpv"
 test -f "${PREFIX}/bin/mpv.exe"
 test -f "${PREFIX}/lib/libmpv.dll.a"
 test -f "${PREFIX}/bin/libmpv-2.dll"
+
+echo "==> Checking libmpv runtime DLL dependencies"
+command -v objdump >/dev/null
+mapfile -t runtime_dlls < <(objdump -p "${PREFIX}/bin/libmpv-2.dll" | sed -n 's/^[[:space:]]*DLL Name: //p')
+((${#runtime_dlls[@]})) || { echo "Could not read libmpv DLL imports" >&2; exit 1; }
+missing_runtime=()
+for dll in "${runtime_dlls[@]}"; do
+    echo "  ${dll}"
+    if [[ -f "${PREFIX}/bin/${dll}" || -f "/mingw64/bin/${dll}" ]]; then
+        missing_runtime+=("${dll}")
+    fi
+done
+if ((${#missing_runtime[@]})); then
+    printf 'libmpv requires external runtime DLL: %s\n' "${missing_runtime[@]}" >&2
+    exit 1
+fi
 
 rm -rf "${PACKAGE_DIR}" "${PACKAGE_ARCHIVE}"
 mkdir -p "${PACKAGE_DIR}/include"

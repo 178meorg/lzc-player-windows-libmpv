@@ -177,7 +177,15 @@ jobs:
           path: build/install
           key: ${{ steps.codec-cache.outputs.cache-primary-key }}
 
+      - name: Restore FFmpeg
+        id: ffmpeg-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: build/install
+          key: mingw64-ffmpeg-v1-${{ steps.codec-cache.outputs.cache-primary-key }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+
       - name: Build FFmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
         run: ./scripts/build-ffmpeg.sh
 
       - name: Verify FFmpeg features
@@ -195,3 +203,10 @@ jobs:
             }
             echo "$library: $(pkg-config --modversion "$library")"
           done
+
+      - name: Save FFmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: build/install
+          key: ${{ steps.ffmpeg-cache.outputs.cache-primary-key }}
