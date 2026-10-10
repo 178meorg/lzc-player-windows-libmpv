@@ -78,6 +78,14 @@ echo "==> mpv commit"
 
 git rev-parse HEAD
 
+# MuJS is required by -Djavascript=enabled. The MSYS2 package is not
+# consistently available on CI runners, so use the Meson WrapDB fallback.
+mkdir -p subprojects
+if [[ ! -f subprojects/mujs.wrap && ! -d subprojects/mujs ]]; then
+    meson wrap install mujs
+fi
+meson subprojects download mujs
+
 # ------------------------------------------------------------
 # Configure
 # ------------------------------------------------------------
@@ -95,6 +103,7 @@ meson setup "${BUILD_DIR}" \
     --buildtype=release \
     --default-library=shared \
     --prefer-static \
+    -Dmujs:default_library=static \
     -Ddebug=true \
     -Db_ndebug=true \
     -Doptimization=3 \
