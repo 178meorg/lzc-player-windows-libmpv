@@ -32,9 +32,24 @@ old = '''    add_library(vulkan
                 ${NORMAL_LOADER_SRCS}'''
 new = old.replace('SHARED', 'STATIC')
 if old in source:
-    path.write_text(source.replace(old, new, 1))
+    source = source.replace(old, new, 1)
 elif new not in source:
     raise SystemExit('Windows Vulkan Loader target layout changed')
+
+# Static archives expose private INTERFACE targets through their CMake export.
+# That export is not needed by our pkg-config consumers and upstream does not
+# export loader_specific_options, so omit it for this static build.
+for old, new in (
+    ('install(TARGETS vulkan EXPORT VulkanLoaderConfig)',
+     'install(TARGETS vulkan)'),
+    ('install(EXPORT VulkanLoaderConfig DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/VulkanLoader NAMESPACE Vulkan::)',
+     ''),
+):
+    if old in source:
+        source = source.replace(old, new, 1)
+    elif new and new not in source:
+        raise SystemExit('Vulkan Loader CMake export layout changed')
+path.write_text(source)
 PY
 
 rm -rf "${BUILD_DIR}"
