@@ -260,7 +260,10 @@ jxl_source="${SRC_ROOT}/libjxl-${LIBJXL_VERSION}"
 jxl_build="${WORK_ROOT}/libjxl"
 download_archive "${jxl_archive}" \
     "https://github.com/libjxl/libjxl/archive/refs/tags/v${LIBJXL_VERSION}.tar.gz"
-[[ -d "${jxl_source}" ]] || tar -xf "${jxl_archive}" -C "${SRC_ROOT}"
+# Windows runners cannot create the benchmark script symlinks in this archive.
+# Benchmarks are disabled, so omit that directory during extraction.
+tar -xf "${jxl_archive}" -C "${SRC_ROOT}" \
+    --exclude='libjxl-*/tools/benchmark/metrics/*'
 rm -rf "${jxl_build}"
 cmake -S "${jxl_source}" -B "${jxl_build}" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
