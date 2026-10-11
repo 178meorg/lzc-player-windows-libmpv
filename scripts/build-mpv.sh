@@ -80,16 +80,20 @@ git rev-parse HEAD
 
 # The pinned fork links directly against VSScript.dll. Use the runtime loading
 # pattern from upstream mpv so the produced libmpv DLL does not import it.
-# Git on Windows may check this file out with CRLF, while the patch uses LF.
-python - <<'PY'
+# Git on Windows may check out both the source and patch with CRLF. Normalize
+# both before git apply; a CRLF patch fails even against an LF source.
+vapoursynth_patch="${WORK_ROOT}/mpv-vapoursynth-runtime-load.patch"
+python - "${ROOT_DIR}/patches/mpv-vapoursynth-runtime-load.patch" "${vapoursynth_patch}" <<'PY'
 from pathlib import Path
+import sys
 
 path = Path("video/filter/vf_vapoursynth.c")
 data = path.read_bytes()
 if b"\r\n" in data:
     path.write_bytes(data.replace(b"\r\n", b"\n"))
+patch = Path(sys.argv[1]).read_bytes()
+Path(sys.argv[2]).write_bytes(patch.replace(b"\r\n", b"\n"))
 PY
-vapoursynth_patch="${ROOT_DIR}/patches/mpv-vapoursynth-runtime-load.patch"
 if git apply --reverse --check "${vapoursynth_patch}" >/dev/null 2>&1; then
     echo "==> mpv VapourSynth runtime-load patch already applied"
 elif git apply --check "${vapoursynth_patch}"; then
