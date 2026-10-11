@@ -1,15 +1,30 @@
 --- a/video/filter/vf_vapoursynth.c
 +++ b/video/filter/vf_vapoursynth.c
-@@ -24,0 +25,4 @@
+@@ -22,6 +22,10 @@
+ #include <limits.h>
+ #include <assert.h>
+ 
 +#ifdef _WIN32
 +#include <windows.h>
 +#endif
 +
-@@ -65,0 +70,3 @@
+ #include <VapourSynth4.h>
+ #include <VSScript4.h>
+ 
+@@ -63,6 +67,9 @@
+ 
+     const struct script_driver *drv;
+     // drv_vss
 +#ifdef _WIN32
 +    HMODULE vsscript_lib;
 +#endif
-@@ -806,0 +814,18 @@
+     const VSSCRIPTAPI *vs_script_api;
+     VSScript *vs_script;
+ 
+@@ -804,9 +811,32 @@
+ 
+ static int drv_vss_init(struct priv *p)
+ {
 +#ifdef _WIN32
 +    // VSScript embeds Python; load it only when a VapourSynth filter is used.
 +    const char *path = getenv("VSSCRIPT_PATH");
@@ -28,16 +43,26 @@
 +    }
 +    p->vs_script_api = get_vsscript_api(VSSCRIPT_API_VERSION);
 +#else
-@@ -807,0 +833 @@
+     p->vs_script_api = getVSScriptAPI(VSSCRIPT_API_VERSION);
 +#endif
-@@ -809,0 +836,4 @@
+     if (!p->vs_script_api) {
+         MP_FATAL(p, "Could not initialize VapourSynth scripting.\n");
 +#ifdef _WIN32
 +        FreeLibrary(p->vsscript_lib);
 +        p->vsscript_lib = NULL;
 +#endif
-@@ -817,0 +848,5 @@
+         return -1;
+     }
+     return 0;
+@@ -815,6 +845,11 @@
+ static void drv_vss_uninit(struct priv *p)
+ {
+     p->vs_script_api = NULL;
 +#ifdef _WIN32
 +    if (p->vsscript_lib)
 +        FreeLibrary(p->vsscript_lib);
 +    p->vsscript_lib = NULL;
 +#endif
+ }
+ 
+ static int drv_vss_load_core(struct priv *p)

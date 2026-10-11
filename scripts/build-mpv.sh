@@ -81,8 +81,7 @@ git rev-parse HEAD
 # The pinned fork links directly against VSScript.dll. Use the runtime loading
 # pattern from upstream mpv so the produced libmpv DLL does not import it.
 vapoursynth_patch="${ROOT_DIR}/patches/mpv-vapoursynth-runtime-load.patch"
-if grep -Fq 'VSScript embeds Python; load it only when a VapourSynth filter is used.' \
-    video/filter/vf_vapoursynth.c; then
+if git apply --reverse --check "${vapoursynth_patch}" >/dev/null 2>&1; then
     echo "==> mpv VapourSynth runtime-load patch already applied"
 elif git apply --check "${vapoursynth_patch}" >/dev/null 2>&1; then
     git apply "${vapoursynth_patch}"
@@ -90,6 +89,20 @@ else
     echo "Cannot apply mpv VapourSynth runtime-load patch" >&2
     exit 1
 fi
+
+# Catch a misplaced patch before spending time on the Meson build.
+python - <<'PY'
+from pathlib import Path
+
+source = Path("video/filter/vf_vapoursynth.c").read_text()
+start = source.index("static int drv_vss_init(struct priv *p)")
+end = source.index("static void drv_vss_uninit(struct priv *p)", start)
+init = source[start:end]
+assert "{\n#ifdef _WIN32" in init
+assert init.count('GetProcAddress(p->vsscript_lib, "getVSScriptAPI")') == 1
+assert 'p->vs_script_api = get_vsscript_api(VSSCRIPT_API_VERSION);' in init
+assert source.count('p->vsscript_lib = LoadLibraryA(') == 1
+PY
 
 # MuJS is required by -Djavascript=enabled. The MSYS2 package is not
 # consistently available on CI runners, so use the Meson WrapDB fallback.
