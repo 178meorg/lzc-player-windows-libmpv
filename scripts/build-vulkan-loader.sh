@@ -36,6 +36,17 @@ if old in source:
 elif new not in source:
     raise SystemExit('Windows Vulkan Loader target layout changed')
 
+# The shared Windows target suppresses MinGW's lib prefix. Static archives
+# need that prefix for the usual -lvulkan-1 linker flag.
+old_prefix = '''        set_target_properties(vulkan
+                              PROPERTIES
+                              PREFIX "")'''
+new_prefix = old_prefix.replace('PREFIX ""', 'PREFIX "lib"')
+if old_prefix in source:
+    source = source.replace(old_prefix, new_prefix, 1)
+elif new_prefix not in source:
+    raise SystemExit('Windows Vulkan Loader archive prefix layout changed')
+
 # Static archives expose private INTERFACE targets through their CMake export.
 # That export is not needed by our pkg-config consumers and upstream does not
 # export loader_specific_options, so omit it for this static build.
