@@ -250,8 +250,16 @@ build_autotools_tar \
 # shared libaribcaption config header makes FFmpeg emit dllimport references,
 # and its static libjxl was compiled against the shared Highway ABI. Build
 # the complete static chain into our prefix instead.
+# Use libaribcaption's OpenSSL-backed MD5 path. Its bundled MD5 implementation
+# exports MD5_Init/Update/Final, which collide with libcrypto in the final DLL.
 build_cmake libaribcaption https://github.com/xqq/libaribcaption.git "v${LIBARIBCAPTION_VERSION}" . \
-    "-DARIBCC_SHARED_LIBRARY=OFF -DARIBCC_BUILD_TESTS=OFF"
+    "-DARIBCC_SHARED_LIBRARY=OFF -DARIBCC_BUILD_TESTS=OFF -DCMAKE_C_FLAGS=-DHAVE_OPENSSL -DCMAKE_CXX_FLAGS=-DHAVE_OPENSSL"
+arib_pc="${PREFIX}/lib/pkgconfig/libaribcaption.pc"
+sed -i '/^Requires.private:/ s/$/ libcrypto/' "${arib_pc}"
+if nm -g --defined-only "${PREFIX}/lib/libaribcaption.a" | grep -Eq '[[:space:]]MD5_(Init|Update|Final)$'; then
+    echo "libaribcaption still exports OpenSSL's MD5 symbols" >&2
+    exit 1
+fi
 build_cmake highway https://github.com/google/highway.git "${HIGHWAY_VERSION}" . \
     "-DHWY_ENABLE_TESTS=OFF -DHWY_ENABLE_EXAMPLES=OFF -DHWY_ENABLE_CONTRIB=OFF"
 
