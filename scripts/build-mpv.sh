@@ -147,7 +147,7 @@ meson setup "${BUILD_DIR}" \
     -Db_ndebug=true \
     -Doptimization=3 \
     -Db_lto=true \
-    -Dc_link_args=-static-libgcc \
+    -Dc_link_args=-static \
     -Dcplayer=true \
     -Dlibmpv=true \
     -Dbuild-date=false \

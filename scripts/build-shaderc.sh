@@ -43,6 +43,26 @@ cmake \
 cmake --build "${BUILD_DIR}"
 cmake --install "${BUILD_DIR}"
 
+# The system shaderc.pc selects shaderc_shared even when a static archive is
+# available. Publish the combined archive in our prefix, which takes priority
+# in PKG_CONFIG_PATH for libplacebo and mpv.
+test -s "${PREFIX}/lib/libshaderc_combined.a"
+mkdir -p "${PREFIX}/lib/pkgconfig"
+cat > "${PREFIX}/lib/pkgconfig/shaderc.pc" <<EOF
+prefix=${PREFIX}
+libdir=\${prefix}/lib
+includedir=\${prefix}/include
+
+Name: shaderc
+Description: Static shaderc compiler
+Version: ${VERSION}
+Libs: -L\${libdir} -lshaderc_combined
+Cflags: -I\${includedir}
+EOF
+
+export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+pkg-config --static --libs shaderc | grep -q -- '-lshaderc_combined'
+
 echo "==> shaderc ${VERSION} build completed"
 
 find "${PREFIX}" \
