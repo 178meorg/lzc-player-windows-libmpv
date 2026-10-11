@@ -56,6 +56,24 @@ cmake --install "${BUILD_DIR}"
 test -s "${PREFIX}/lib/libvulkan-1.a"
 test ! -f "${PREFIX}/bin/vulkan-1.dll"
 
+# Upstream's MinGW pkg-config file uses -lvulkan-1.dll for the import
+# library. Point it at the archive and include the Windows setup API needed
+# by the loader implementation.
+python - "${PREFIX}/lib/pkgconfig/vulkan.pc" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+source = path.read_text()
+old = 'Libs: -L${libdir} -lvulkan-1.dll'
+if source.count(old) != 1:
+    raise SystemExit('Unexpected Vulkan pkg-config library flags')
+path.write_text(source.replace(old, 'Libs: -L${libdir} -lvulkan-1\nLibs.private: -lcfgmgr32'))
+PY
+
+export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+pkg-config --static --libs vulkan | grep -q -- '-lvulkan-1'
+
 echo "==> Vulkan-Loader ${VERSION} build completed"
 
 find "${PREFIX}" \
