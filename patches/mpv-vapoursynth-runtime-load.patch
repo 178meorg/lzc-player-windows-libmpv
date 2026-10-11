@@ -1,0 +1,43 @@
+--- a/video/filter/vf_vapoursynth.c
++++ b/video/filter/vf_vapoursynth.c
+@@ -24,0 +25,4 @@
++#ifdef _WIN32
++#include <windows.h>
++#endif
++
+@@ -65,0 +70,3 @@
++#ifdef _WIN32
++    HMODULE vsscript_lib;
++#endif
+@@ -806,0 +814,18 @@
++#ifdef _WIN32
++    // VSScript embeds Python; load it only when a VapourSynth filter is used.
++    const char *path = getenv("VSSCRIPT_PATH");
++    p->vsscript_lib = LoadLibraryA(path ? path : "VSScript.dll");
++    if (!p->vsscript_lib) {
++        MP_FATAL(p, "Could not load VapourSynth scripting DLL.\n");
++        return -1;
++    }
++    VS_CC const VSSCRIPTAPI *(*get_vsscript_api)(int) =
++        (void *)GetProcAddress(p->vsscript_lib, "getVSScriptAPI");
++    if (!get_vsscript_api) {
++        MP_FATAL(p, "Could not find getVSScriptAPI in VapourSynth scripting DLL.\n");
++        FreeLibrary(p->vsscript_lib);
++        p->vsscript_lib = NULL;
++        return -1;
++    }
++    p->vs_script_api = get_vsscript_api(VSSCRIPT_API_VERSION);
++#else
+@@ -807,0 +833 @@
++#endif
+@@ -809,0 +836,4 @@
++#ifdef _WIN32
++        FreeLibrary(p->vsscript_lib);
++        p->vsscript_lib = NULL;
++#endif
+@@ -817,0 +848,5 @@
++#ifdef _WIN32
++    if (p->vsscript_lib)
++        FreeLibrary(p->vsscript_lib);
++    p->vsscript_lib = NULL;
++#endif

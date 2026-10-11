@@ -240,6 +240,76 @@ build_autotools_tar \
     "libbs2b-${LIBBS2B_VERSION}" \
     ""
 
+# MSYS2 installs both shared and static variants of these libraries. Its
+# shared libaribcaption config header makes FFmpeg emit dllimport references,
+# and its static libjxl was compiled against the shared Highway ABI. Build
+# the complete static chain into our prefix instead.
+build_cmake libaribcaption https://github.com/xqq/libaribcaption.git "v${LIBARIBCAPTION_VERSION}" . \
+    "-DARIBCC_SHARED_LIBRARY=OFF -DARIBCC_BUILD_TESTS=OFF"
+build_cmake highway https://github.com/google/highway.git "${HIGHWAY_VERSION}" . \
+    "-DHWY_ENABLE_TESTS=OFF -DHWY_ENABLE_EXAMPLES=OFF -DHWY_ENABLE_CONTRIB=OFF"
+
+jxl_archive="${DOWNLOAD_ROOT}/libjxl-${LIBJXL_VERSION}.tar.gz"
+jxl_source="${SRC_ROOT}/libjxl-${LIBJXL_VERSION}"
+jxl_build="${WORK_ROOT}/libjxl"
+download_archive "${jxl_archive}" \
+    "https://github.com/libjxl/libjxl/archive/refs/tags/v${LIBJXL_VERSION}.tar.gz"
+[[ -d "${jxl_source}" ]] || tar -xf "${jxl_archive}" -C "${SRC_ROOT}"
+rm -rf "${jxl_build}"
+cmake -S "${jxl_source}" -B "${jxl_build}" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_TESTING=OFF \
+    -DJPEGXL_BUNDLE_LIBPNG=OFF \
+    -DJPEGXL_ENABLE_BENCHMARK=OFF \
+    -DJPEGXL_ENABLE_DOXYGEN=OFF \
+    -DJPEGXL_ENABLE_EXAMPLES=OFF \
+    -DJPEGXL_ENABLE_JNI=OFF \
+    -DJPEGXL_ENABLE_PLUGINS=OFF \
+    -DJPEGXL_ENABLE_SJPEG=OFF \
+    -DJPEGXL_ENABLE_SKCMS=OFF \
+    -DJPEGXL_ENABLE_TCMALLOC=OFF \
+    -DJPEGXL_ENABLE_TOOLS=OFF \
+    -DJPEGXL_FORCE_SYSTEM_BROTLI=ON \
+    -DJPEGXL_FORCE_SYSTEM_HWY=ON \
+    -DJPEGXL_FORCE_SYSTEM_LCMS2=ON \
+    -DJPEGXL_WARNINGS_AS_ERRORS=OFF
+cmake --build "${jxl_build}" -j"${JOBS}"
+cmake --install "${jxl_build}"
+
+[[ -f "${PREFIX}/lib/libaribcaption.a" && -f "${PREFIX}/lib/libhwy.a" && -f "${PREFIX}/lib/libjxl.a" ]] || {
+    echo "Missing rebuilt static aribcaption, Highway, or JPEG XL archive" >&2
+    exit 1
+}
+if grep -q '^#define ARIBCC_SHARED_LIBRARY' "${PREFIX}/include/aribcaption/aribcc_config.h"; then
+    echo "libaribcaption headers still request DLL imports" >&2
+    exit 1
+fi
+if ! pkg-config --cflags libhwy | grep -q -- '-DHWY_STATIC_DEFINE'; then
+    echo "Highway pkg-config metadata does not select static symbols" >&2
+    exit 1
+fi
+
+# Exercise real entry points, not just pkg-config discovery. These archives
+# previously passed FFmpeg configure but failed when mpv linked libavcodec.
+arib_probe="${WORK_ROOT}/aribcaption-link-check.exe"
+printf '%s\n' '#include <aribcaption/aribcaption.h>' \
+    'int main(void) { return aribcc_context_alloc() == 0; }' \
+    | gcc -x c - -x none -o "${arib_probe}" \
+        $(pkg-config --cflags --static libaribcaption) \
+        $(pkg-config --libs --static libaribcaption) -lstdc++
+rm -f "${arib_probe}"
+
+jxl_probe="${WORK_ROOT}/libjxl-link-check.exe"
+printf '%s\n' '#include <jxl/decode.h>' \
+    'int main(void) { JxlDecoder *d = JxlDecoderCreate(0); JxlDecoderDestroy(d); return 0; }' \
+    | gcc -x c - -x none -o "${jxl_probe}" \
+        $(pkg-config --cflags --static libjxl) \
+        $(pkg-config --libs --static libjxl) -lstdc++
+rm -f "${jxl_probe}"
+
 for library in expat libpng libssh srt zimg libmysofa vpl openal fontconfig libbluray dvdread dvdnav libmodplug libbs2b libjxl vapoursynth vapoursynth-script rubberband libaribcaption zvbi-0.2; do
     pkg-config --exists "${library}" || {
         echo "Missing pkg-config package: ${library}" >&2
