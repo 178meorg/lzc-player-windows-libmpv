@@ -19,6 +19,12 @@ export LDFLAGS="-L${PREFIX}/lib ${LDFLAGS:-}"
 source "${ROOT_DIR}/config/versions.env"
 source "${ROOT_DIR}/scripts/build-download.sh"
 
+# These packages belong to the extra-dependency checkpoint. Keep their pins
+# here so changing them does not invalidate the base library cache.
+HIGHWAY_VERSION="1.4.0"
+LIBJXL_VERSION="0.12.0"
+LIBARIBCAPTION_VERSION="1.1.2"
+
 DOWNLOAD_ROOT="${BUILD_ROOT}/downloads/ffmpeg-extra"
 
 JOBS="${JOBS:-$(nproc)}"
