@@ -64,7 +64,6 @@ jobs:
             mingw-w64-x86_64-uchardet
             mingw-w64-x86_64-curl
             mingw-w64-x86_64-python-docutils
-            mingw-w64-x86_64-python-rst2pdf
 
       - name: Check build tools
         run: |

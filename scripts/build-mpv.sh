@@ -151,7 +151,7 @@ meson setup "${BUILD_DIR}" \
     -Dcplayer=true \
     -Dlibmpv=true \
     -Dbuild-date=false \
-    -Dpdf-build=enabled \
+    -Dpdf-build=disabled \
     -Dmanpage-build=enabled \
     -Dhtml-build=enabled \
     -Dtests=true \
@@ -185,7 +185,7 @@ expected = {
     "debug": True,
     "optimization": "3",
     "b_lto": True,
-    "pdf-build": "enabled",
+    "pdf-build": "disabled",
     "manpage-build": "enabled",
     "html-build": "enabled",
     "tests": True,
