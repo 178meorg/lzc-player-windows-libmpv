@@ -136,6 +136,8 @@ echo "========================================"
 echo "Configuring mpv"
 echo "========================================"
 
+# Meson may use the C++ linker for static C++ dependencies. C link arguments
+# do not apply to that driver, so set the static runtime policy for both.
 meson setup "${BUILD_DIR}" \
     --prefix="${PREFIX}" \
     --libdir=lib \
@@ -147,7 +149,8 @@ meson setup "${BUILD_DIR}" \
     -Db_ndebug=true \
     -Doptimization=3 \
     -Db_lto=true \
-    -Dc_link_args=-static \
+    -Dc_link_args="-static -static-libgcc -static-libstdc++" \
+    -Dcpp_link_args="-static -static-libgcc -static-libstdc++" \
     -Dcplayer=true \
     -Dlibmpv=true \
     -Dbuild-date=false \
@@ -187,6 +190,8 @@ expected = {
     "debug": True,
     "optimization": "3",
     "b_lto": True,
+    "c_link_args": ["-static", "-static-libgcc", "-static-libstdc++"],
+    "cpp_link_args": ["-static", "-static-libgcc", "-static-libstdc++"],
     "pdf-build": "disabled",
     "manpage-build": "enabled",
     "html-build": "enabled",
@@ -227,6 +232,14 @@ link_args = [arg for group in libmpv["target_sources"] if "linker" in group
              for arg in group["parameters"]]
 if not link_args:
     raise SystemExit("Could not read the libmpv DLL link arguments")
+linker = next(group["linker"] for group in libmpv["target_sources"] if "linker" in group)
+print("libmpv linker: " + " ".join(linker))
+required_runtime_flags = {"-static", "-static-libgcc", "-static-libstdc++"}
+missing_runtime_flags = required_runtime_flags.difference(link_args)
+if missing_runtime_flags:
+    raise SystemExit("libmpv link command is missing static runtime flags: "
+                     + " ".join(sorted(missing_runtime_flags)))
+print("libmpv link arguments: static MinGW runtimes enabled")
 unexpected = [arg for arg in link_args if re.search(
     r"(?:^-l(?:python|vapoursynth|vsscript)|(?:^|[/\\])(?:lib)?"
     r"(?:python|vapoursynth|vsscript)[^/\\]*\.(?:a|lib|dll)$)", arg, re.I
