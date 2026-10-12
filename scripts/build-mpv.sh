@@ -39,6 +39,12 @@ echo "PREFIX=${PREFIX}"
 echo "SRC_DIR=${SRC_DIR}"
 echo "BUILD_DIR=${BUILD_DIR}"
 
+# x265.pc records g++'s implicit -lgcc_s dependency, and FFmpeg copies it into
+# its own metadata. libgcc_s.a is a DLL import library even with --prefer-static
+# and -static-libgcc. Repair both fresh and cached metadata before Meson reads it;
+# the actual x265/FFmpeg archives do not need to be rebuilt.
+python "${ROOT_DIR}/scripts/mingw_static_pc.py" "${PREFIX}"
+
 # ------------------------------------------------------------
 # Clone latest source
 # ------------------------------------------------------------
@@ -241,6 +247,14 @@ if missing_runtime_flags:
     raise SystemExit("libmpv link command is missing static runtime flags: "
                      + " ".join(sorted(missing_runtime_flags)))
 print("libmpv link arguments: static MinGW runtimes enabled")
+shared_gcc = [arg for arg in link_args if re.search(
+    r"(?:^-lgcc_s$|^-l:libgcc_s\.a$|^-shared-libgcc$|"
+    r"(?:^|[/\\])libgcc_s\.(?:a|dll\.a)$)", arg, re.I
+)]
+if shared_gcc:
+    raise SystemExit("libmpv links the shared GCC runtime despite static flags: "
+                     + " ".join(shared_gcc))
+print("libmpv link arguments: no shared GCC import libraries")
 unexpected = [arg for arg in link_args if re.search(
     r"(?:^-l(?:python|vapoursynth|vsscript)|(?:^|[/\\])(?:lib)?"
     r"(?:python|vapoursynth|vsscript)[^/\\]*\.(?:a|lib|dll)$)", arg, re.I

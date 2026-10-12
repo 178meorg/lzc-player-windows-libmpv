@@ -8,6 +8,7 @@ on:
       - "config/versions.env"
       - "scripts/**"
       - "patches/**"
+      - "tests/**"
 
 jobs:
   build:
@@ -82,6 +83,9 @@ jobs:
           rustc --version
           cargo --version
           cargo cinstall --help >/dev/null
+
+      - name: Test static runtime metadata
+        run: python -m unittest discover -s tests -v
 
       # Save the completed prerequisite prefix before the long codec build.
       # Changes to the codec/FFmpeg scripts must not invalidate this checkpoint.
