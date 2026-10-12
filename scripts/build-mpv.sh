@@ -78,8 +78,8 @@ echo "==> mpv commit"
 
 git rev-parse HEAD
 
-# The pinned fork links directly against VSScript.dll. Use the runtime loading
-# pattern from upstream mpv so the produced libmpv DLL does not import it.
+# The fork links directly against VSScript.dll. Use runtime loading and retain
+# only the VapourSynth compile dependencies so libmpv does not link it or Python.
 # Git on Windows may check out both the source and patch with CRLF. Normalize
 # both before git apply; a CRLF patch fails even against an LF source.
 vapoursynth_patch="${WORK_ROOT}/mpv-vapoursynth-runtime-load.patch"
@@ -87,10 +87,10 @@ python - "${ROOT_DIR}/patches/mpv-vapoursynth-runtime-load.patch" "${vapoursynth
 from pathlib import Path
 import sys
 
-path = Path("video/filter/vf_vapoursynth.c")
-data = path.read_bytes()
-if b"\r\n" in data:
-    path.write_bytes(data.replace(b"\r\n", b"\n"))
+for path in (Path("meson.build"), Path("video/filter/vf_vapoursynth.c")):
+    data = path.read_bytes()
+    if b"\r\n" in data:
+        path.write_bytes(data.replace(b"\r\n", b"\n"))
 patch = Path(sys.argv[1]).read_bytes()
 Path(sys.argv[2]).write_bytes(patch.replace(b"\r\n", b"\n"))
 PY
@@ -171,6 +171,8 @@ meson setup "${BUILD_DIR}" \
 
 python - "${BUILD_DIR}" <<'PY'
 import json
+from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -211,6 +213,28 @@ for name, wanted in expected.items():
         errors.append(f"{name}: expected {wanted}, got {got}")
 if errors:
     raise SystemExit("Meson configuration mismatch:\n  " + "\n  ".join(errors))
+
+# Check the generated DLL link command before compiling all mpv objects.
+targets = json.loads(subprocess.check_output(
+    ["meson", "introspect", "--targets", build_dir], text=True
+))
+libmpv = next((target for target in targets if any(
+    Path(filename).name.lower() == "libmpv-2.dll" for filename in target["filename"]
+)), None)
+if libmpv is None:
+    raise SystemExit("Meson did not generate the libmpv DLL target")
+link_args = [arg for group in libmpv["target_sources"] if "linker" in group
+             for arg in group["parameters"]]
+if not link_args:
+    raise SystemExit("Could not read the libmpv DLL link arguments")
+unexpected = [arg for arg in link_args if re.search(
+    r"(?:^-l(?:python|vapoursynth|vsscript)|(?:^|[/\\])(?:lib)?"
+    r"(?:python|vapoursynth|vsscript)[^/\\]*\.(?:a|lib|dll)$)", arg, re.I
+)]
+if unexpected:
+    raise SystemExit("libmpv must load VapourSynth at runtime, but links: "
+                     + " ".join(unexpected))
+print("libmpv link arguments: no VapourSynth or Python libraries")
 PY
 
 # ------------------------------------------------------------

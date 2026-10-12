@@ -1,3 +1,22 @@
+--- a/meson.build
++++ b/meson.build
+@@ -765,6 +765,15 @@
+                                 required: get_option('vapoursynth'))
+ features += {'vapoursynth': vapoursynth.found() and vapoursynth_script.found()}
+ if features['vapoursynth']
+-    dependencies += [vapoursynth, vapoursynth_script]
++    if win32
++        # VSScript is loaded at runtime on Windows. Only its headers are needed;
++        # linking the static pkg-config dependencies would also pull in Python.
++        dependencies += [
++            vapoursynth.partial_dependency(includes: true, compile_args: true),
++            vapoursynth_script.partial_dependency(includes: true, compile_args: true),
++        ]
++    else
++        dependencies += [vapoursynth, vapoursynth_script]
++    endif
+     sources += files('video/filter/vf_vapoursynth.c')
+ endif
 --- a/video/filter/vf_vapoursynth.c
 +++ b/video/filter/vf_vapoursynth.c
 @@ -22,6 +22,10 @@
