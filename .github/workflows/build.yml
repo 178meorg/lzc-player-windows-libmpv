@@ -250,6 +250,12 @@ jobs:
       - name: Build mpv
         run: ./scripts/build-mpv.sh
 
+      - name: Diagnose failed libmpv linking
+        if: ${{ failure() && steps.libarchive-cache.outcome == 'success' }}
+        run: |
+          export PKG_CONFIG_PATH="$PWD/build/install/lib/pkgconfig:$PWD/build/install/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+          python scripts/diagnose-mpv-link.py build/work/mpv
+
       - name: Verify mpv executable
         run: |
           export PATH="$PWD/build/install/bin:$PATH"

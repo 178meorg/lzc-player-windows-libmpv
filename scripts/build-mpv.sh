@@ -234,6 +234,7 @@ if not link_args:
     raise SystemExit("Could not read the libmpv DLL link arguments")
 linker = next(group["linker"] for group in libmpv["target_sources"] if "linker" in group)
 print("libmpv linker: " + " ".join(linker))
+print("libmpv link parameters:\n  " + "\n  ".join(link_args))
 required_runtime_flags = {"-static", "-static-libgcc", "-static-libstdc++"}
 missing_runtime_flags = required_runtime_flags.difference(link_args)
 if missing_runtime_flags:
