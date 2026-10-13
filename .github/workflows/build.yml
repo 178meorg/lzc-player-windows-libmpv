@@ -335,7 +335,8 @@ jobs:
           mkdir release
           asset="mpv-dev-x86_64-${RELEASE_TAG}.7z"
           cd package/extracted/libmpv-windows-x86_64
-          7zz a -t7z -m0=lzma2 -mx=9 -ms=on "../../../release/${asset}" libmpv-2.dll libmpv.dll.a include
+          sevenzip=$(command -v 7z || command -v 7zz)
+          "$sevenzip" a -t7z -m0=lzma2 -mx=9 -ms=on "../../../release/${asset}" libmpv-2.dll libmpv.dll.a include
           cd ../../../release
           sha256sum "${asset}" > sha256.txt
 

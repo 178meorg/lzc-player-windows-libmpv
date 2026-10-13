@@ -1,0 +1,88 @@
+name: Publish tested libmpv artifact
+
+on:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/release-existing.yml']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag
+        required: true
+        default: v0.41.0-build.1
+      build_run_id:
+        description: Run whose build and smoke test passed
+        required: true
+        default: '38434878470'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+      checks: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.release_tag || 'v0.41.0-build.1' }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id || '38434878470' }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Verify artifact provenance and tests
+        run: |
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID" > run.json
+          gh api --paginate "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID/jobs" --jq '.jobs[]' > jobs.jsonl
+          python - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          run = json.loads(Path('run.json').read_text())
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert run['head_sha'] == sha, 'Artifact source does not match release tag'
+          assert run['name'] == 'Build mpv', 'Unexpected build workflow'
+          assert run['status'] == 'completed', 'Build run is not finished'
+          jobs = [json.loads(line) for line in Path('jobs.jsonl').read_text().splitlines()]
+          for name in ('build', 'Smoke test packaged libmpv'):
+              assert any(j['name'] == name and j['conclusion'] == 'success' for j in jobs), name + ' did not pass'
+          print('Artifact commit matches tag; build and Windows smoke test passed')
+          PY
+
+      - name: Download tested package
+        uses: actions/download-artifact@v6
+        with:
+          name: libmpv-windows-x86_64
+          path: package
+          run-id: ${{ env.BUILD_RUN_ID }}
+          github-token: ${{ github.token }}
+
+      - name: Package release assets
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y 7zip
+          sevenzip=$(command -v 7z || command -v 7zz)
+          unzip -q package/libmpv-windows-x86_64.zip -d package/extracted
+          mkdir release
+          asset="mpv-dev-x86_64-${RELEASE_TAG}.7z"
+          cd package/extracted/libmpv-windows-x86_64
+          "$sevenzip" a -t7z -m0=lzma2 -mx=9 -ms=on "../../../release/${asset}" libmpv-2.dll libmpv.dll.a include
+          "$sevenzip" t "../../../release/${asset}"
+          cd ../../../release
+          sha256sum "${asset}" > sha256.txt
+
+      - name: Publish release
+        run: |
+          cat > release-notes.md <<'EOF'
+          Windows x86_64 libmpv development package.
+
+          Includes `libmpv-2.dll`, `libmpv.dll.a`, and `include/mpv/*.h` at the archive root. Runtime dependencies, including uchardet, are linked statically except Windows system libraries.
+
+          This is a GPL build, not the LGPL variant published by the older build repository.
+
+          Validation: Windows DLL loading, initialization, headless video/audio playback to EOF, and cleanup passed before publication. GPU rendering, hardware decoding, and subtitle encoding are not covered by this smoke test.
+          EOF
+          printf '\nBuild and test results: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$BUILD_RUN_ID" >> release-notes.md
+          gh release create "$RELEASE_TAG" release/*.7z release/sha256.txt --verify-tag --title "libmpv $RELEASE_TAG (Windows x86_64)" --notes-file release-notes.md
