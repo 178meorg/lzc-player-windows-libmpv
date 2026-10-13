@@ -271,3 +271,40 @@ jobs:
           name: libmpv-windows-x86_64
           path: build/libmpv-windows-x86_64.zip
           if-no-files-found: error
+
+  smoke-test:
+    name: Smoke test packaged libmpv
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup native Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: x64
+
+      - name: Download mpv package
+        uses: actions/download-artifact@v6
+        with:
+          name: libmpv-windows-x86_64
+          path: smoke-package
+
+      - name: Extract package
+        shell: pwsh
+        run: Expand-Archive smoke-package/libmpv-windows-x86_64.zip -DestinationPath smoke-package/extracted
+
+      - name: Test DLL loading and headless playback
+        shell: pwsh
+        run: python scripts/smoke-libmpv.py smoke-package/extracted/libmpv-windows-x86_64/libmpv-2.dll --output-dir smoke-results
+
+      - name: Upload smoke test logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: libmpv-smoke-test-logs
+          path: smoke-results
+          if-no-files-found: warn
