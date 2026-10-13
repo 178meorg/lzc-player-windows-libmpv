@@ -3,6 +3,8 @@ name: Build mpv
 on:
   workflow_dispatch:
   push:
+    tags:
+      - 'v*-build.*'
     paths:
       - ".github/workflows/build.yml"
       - "config/versions.env"
@@ -308,3 +310,49 @@ jobs:
           name: libmpv-smoke-test-logs
           path: smoke-results
           if-no-files-found: warn
+
+  release:
+    name: Publish libmpv release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, smoke-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tested package
+        uses: actions/download-artifact@v6
+        with:
+          name: libmpv-windows-x86_64
+          path: package
+
+      - name: Package release assets
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y 7zip
+          unzip -q package/libmpv-windows-x86_64.zip -d package/extracted
+          mkdir release
+          asset="mpv-dev-x86_64-${RELEASE_TAG}.7z"
+          cd package/extracted/libmpv-windows-x86_64
+          7zz a -t7z -m0=lzma2 -mx=9 -ms=on "../../../release/${asset}" libmpv-2.dll libmpv.dll.a include
+          cd ../../../release
+          sha256sum "${asset}" > sha256.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          Windows x86_64 libmpv development package for mpv 0.41.0, build 1.
+
+          Includes `libmpv-2.dll`, `libmpv.dll.a`, and `include/mpv/*.h` at the archive root. Runtime dependencies, including uchardet, are linked statically except Windows system libraries.
+
+          This is a GPL build, not the LGPL variant published by the older build repository.
+
+          Validation: Windows DLL loading, initialization, headless video/audio playback to EOF, and cleanup passed before publication. GPU rendering, hardware decoding, and subtitle encoding are not covered by this smoke test.
+          EOF
+          printf '\nBuild and test results: https://github.com/%s/actions/runs/%s\n' "$GH_REPO" "$GITHUB_RUN_ID" >> release-notes.md
+          gh release create "$RELEASE_TAG" release/*.7z release/sha256.txt --verify-tag --title "libmpv $RELEASE_TAG (Windows x86_64)" --notes-file release-notes.md
